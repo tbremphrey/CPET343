@@ -14,7 +14,7 @@
 # do sim.do
 # ** Warning: (vlib-34) Library already exists at "work".
 # Model Technology ModelSim SE-64 vcom 2019.2 Compiler 2019.04 Apr 17 2019
-# Start time: 12:28:11 on Sep 10,2025
+# Start time: 13:12:32 on Sep 10,2025
 # vcom -reportprogress 300 -93 -work work ../../src/full_adder_single_bit_beh.vhd 
 # -- Loading package STANDARD
 # -- Loading package TEXTIO
@@ -22,20 +22,20 @@
 # -- Loading package NUMERIC_STD
 # -- Compiling entity full_adder_single_bit_beh
 # -- Compiling architecture beh of full_adder_single_bit_beh
-# End time: 12:28:12 on Sep 10,2025, Elapsed time: 0:00:01
+# End time: 13:12:32 on Sep 10,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # Model Technology ModelSim SE-64 vcom 2019.2 Compiler 2019.04 Apr 17 2019
-# Start time: 12:28:12 on Sep 10,2025
+# Start time: 13:12:32 on Sep 10,2025
 # vcom -reportprogress 300 -93 -work work ../src/full_adder_single_bit_beh_tb.vhd 
 # -- Loading package STANDARD
 # -- Loading package TEXTIO
 # -- Loading package std_logic_1164
 # -- Compiling entity full_adder_single_bit_beh_tb
 # -- Compiling architecture arch of full_adder_single_bit_beh_tb
-# End time: 12:28:12 on Sep 10,2025, Elapsed time: 0:00:00
+# End time: 13:12:32 on Sep 10,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -voptargs="+acc" full_adder_single_bit_beh_tb 
-# Start time: 12:28:12 on Sep 10,2025
+# Start time: 13:12:32 on Sep 10,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # Loading std.standard
 # Loading std.textio(body)
@@ -49,3 +49,8 @@
 # GetModuleFileName: The specified module could not be found.
 # 
 # 
+# ** Warning: (vsim-WLF-5000) WLF file currently in use: vsim.wlf
+#           File in use by: tbr2824  Hostname: GOL-1360-10  ProcessID: 15760
+#           Attempting to use alternate WLF file "./wlftdvhkcc".
+# ** Warning: (vsim-WLF-5001) Could not open WLF file: vsim.wlf
+#           Using alternate file: ./wlftdvhkcc
