@@ -2,3 +2,6 @@
 *.pdf
 transcript*
 *.wlf
+*.vstf
+*\project
+*\output_files
