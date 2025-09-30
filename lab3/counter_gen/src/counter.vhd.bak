@@ -1,0 +1,87 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity counter is
+  port (
+    clk             : in std_logic;
+    reset           : in std_logic;
+    seven_seg_out   : out std_logic_vector(6 downto 0);
+    sum : out std_logic_vector(3 downto 0);
+    sum_sig : out std_logic_vector(3 downto 0)
+  );  
+end entity counter;
+
+architecture behavior of counter is
+    component generic_adder_beh is
+        generic (
+            bits    : integer := 4
+        );
+        port (
+            a       : in  std_logic_vector(bits-1 downto 0);
+            b       : in  std_logic_vector(bits-1 downto 0);
+            cin     : in  std_logic;
+            sum     : out std_logic_vector(bits-1 downto 0);
+            cout    : out std_logic
+        );
+    end component generic_adder_beh;
+    component generic_counter is
+        generic (
+            max_count       : integer := 3
+        );
+        port (
+            clk             : in  std_logic; 
+            reset           : in  std_logic;
+            output          : out std_logic
+        );  
+    end component generic_counter;
+    component seven_seg is
+        port (
+            reset           : in std_logic;
+            bcd             : in std_logic_vector(3 downto 0);
+            seven_seg_out   : out std_logic_vector(6 downto 0)
+        );  
+    end component seven_seg;
+
+    signal enable : std_logic;
+    signal sum_internal : std_logic_vector(3 downto 0) := "0000";
+    signal sum_sig_internal : std_logic_vector(3 downto 0);
+
+    begin
+        seven_segment:seven_seg
+            port map (
+                reset => reset,
+                bcd => sum_sig_internal,
+                seven_seg_out => seven_seg_out
+            );
+        gen_counter_flag:generic_counter
+            port map (
+                clk => clk,
+                reset => reset,
+                output => enable
+            );
+        gen_adder:generic_adder_beh
+            port map (
+                a => sum_sig_internal,
+                b => "0001",
+                sum => sum_internal,
+                cin => '0'
+            );
+
+        process(sum_internal, clk)
+            begin
+            if (reset = '1') then
+                sum_sig_internal <= "0000";
+                sum <= "0000";
+            elsif (sum_internal = "1011") then
+                sum_sig_internal <= "0000";
+            elsif (clk'event and clk = '1') then
+                if (enable = '1') then
+                sum_sig_internal <= sum_internal; 
+                end if;
+            end if;
+            sum <= sum_internal;
+            sum_sig <= sum_sig_internal;
+
+        end process;
+end architecture behavior;
