@@ -8,14 +8,13 @@ entity synchronizer is
     port (
         input   : in  std_logic_vector(bits-1 downto 0);
         clk     : in std_logic;
-        reset   : in std_logic;
-        output  : out std_logic_vector(bits-1 downto 0)
+        output  : out std_logic_vector(bits-1 downto 0);
     );
 end entity synchronizer;
 
 architecture arch of synchronizer is
 
-    signal temp_hold : std_logic_vector(bits-1 downto 0);
+    signal temp_hold std_logic;
     
     begin
         process (clk, reset)

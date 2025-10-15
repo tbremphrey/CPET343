@@ -16,7 +16,7 @@ entity add_sub is
     add_button  : in std_logic;
     sub_button  : in std_logic;
     clk         : in std_logic;
-    result      : out std_logic_vector(bits-1 downto 0)
+    result      : out std_logic_vector(bits-1 downto 0);
   );
 end entity add_sub;
 
@@ -30,8 +30,8 @@ signal sub_on : std_logic;
 begin
   add_temp  <= std_logic_vector(unsigned("0" & a) + unsigned("0" & b));
   sub_temp  <= std_logic_vector(unsigned("0" & a) - unsigned("0" & b));
-process(add_button, sub_button,clk)
-begin 
+process (add_button, sub_button, a, b)
+  begin
         if (add_button = '1') then
             add_on <= '1';
 			sub_on <= '0';
@@ -39,10 +39,6 @@ begin
             sub_on <= '1';
 			add_on <= '0';
         end if;
-	end process;
-
-process (a, b)
-  begin
         if (add_on = '1') then
             result <= add_temp;
         elsif (sub_on = '1') then

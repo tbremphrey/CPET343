@@ -12,7 +12,7 @@ entity rising_edge_synchronizer is
     input             : in std_logic;
     edge              : out std_logic
   );
-end rising_edge_synchronizer;
+end entity rising_edge_synchronizer;
 
 architecture beh of rising_edge_synchronizer is
 -- signal declarations
