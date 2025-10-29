@@ -2,21 +2,22 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity add_sub_state_machine is
+entity calc_state_machine is
     port (
         reset           : in std_logic;
         clk             : in std_logic;
         execute         : in std_logic;
-		MS              : in std_logic;
-		MR              : in std_logic;
+		mSave           : in std_logic;
+		mRecall         : in std_logic;
+        inputOperator   : in std_logic_vector(1 downto 0);
         inputBits       : in std_logic_vector(7 downto 0);
         onesSSD         : out std_logic_vector(6 downto 0);
         tensSSD         : out std_logic_vector(6 downto 0);
         hundredsSSD     : out std_logic_vector(6 downto 0)
     );
-end entity add_sub_state_machine;
+end entity calc_state_machine;
 
-architecture beh of add_sub_state_machine is
+architecture beh of calc_state_machine is
 
 type CalcStates is (state_readW, state_readS, state_writeW, state_writeS, state_mathOP, state_memClear);
 signal currentState : CalcStates;
@@ -77,12 +78,12 @@ signal paddedOutput     : std_logic_vector(11 downto 0);
 signal aluOut  : std_logic_vector(7 downto 0);
 signal clockedOutput    : std_logic_vector(7 downto 0);
 signal syncedInput      : std_logic_vector(7 downto 0);
+signal syncedOperator   : std_logic_vector(1 downto 0);
 signal syncedExecute    : std_logic;
 signal syncedMS         : std_logic;
 signal syncedMR         : std_logic;
 signal memIn         : std_logic_vector(7 downto 0);
 signal memOut         : std_logic_vector(7 downto 0);
-signal b_signal         : std_logic_vector(7 downto 0);
 signal memAddress		: std_logic_vector(1 downto 0);
 signal writeFlag		: std_logic;
 
@@ -95,14 +96,37 @@ begin
             reset => reset,
             output => syncedInput
         );
-    buttonSync:rising_edge_synchronizer
+    operatorSync:synchronizer
+        generic (
+        bits    : integer := 2
+        );
+        port map (
+            input => inputOperator,
+            clk => clk,
+            reset => reset,
+            output => syncedOperator
+        );
+    executeSync:rising_edge_synchronizer
         port map (
             clk => clk,
             reset => reset,
-            input => button,
-            edge => syncedButton
+            input => execute,
+            edge => syncedExecute
         );
-    
+    msSync:rising_edge_synchronizer
+        port map (
+            clk => clk,
+            reset => reset,
+            input => mSave,
+            edge => syncedMS
+        );
+    mrSync:rising_edge_synchronizer
+        port map (
+            clk => clk,
+            reset => reset,
+            input => mRecall,
+            edge => syncedMR
+        );
     outputSplitter:double_dabble
         port map (
             result_padded => paddedOutput,
@@ -128,9 +152,28 @@ begin
             bcd => hundredsDigit,
             seven_seg_out => hundredsSSD
         );
+    mathOP:alu
+        port map (
+        clk => clk,
+        reset => reset,
+        a => memOut,
+        b => syncedInput,
+        op => syncedOperator,
+        result => aluOut
+        ); 
 
-memOut <= calcMemory(to_integer(unsigned(memAddress)));
-calcMemory(to_integer(unsigned(memAddress))) <= clockedOutput;
+    memIn <= clockedOutput;
+    paddedOutput <= ("0000" & clockedOutput);
+
+    process (clk)
+    begin
+        if (clk'event and clk = '1') then
+            if (writeFlag = '1') then
+                calcMemory(to_integer(unsigned(memAddress))) <= memIn;
+            end if;
+            memOut <= calcMemory(to_integer(unsigned(memAddress)));
+        end if;
+    end process;
 
     process (clk, reset)
     begin
@@ -152,13 +195,14 @@ calcMemory(to_integer(unsigned(memAddress))) <= clockedOutput;
 			when state_readW =>
 				writeFlag <= '0';
 				memAddress <= "00";
+                clockedOutput <= memOut;
             when state_writeS =>
                 memAddress <= "01";
 				writeFlag <= '1';
             when state_mathOP =>
                 clockedOutput <= aluOut;
 			when state_writeW =>
-				memAddress <= "09";
+				memAddress <= "00";
 				writeFlag <= '1';
 			when state_readS =>
 				writeFlag <= '0';
