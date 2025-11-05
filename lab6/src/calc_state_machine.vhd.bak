@@ -217,37 +217,47 @@ begin
 
         case currentState is
             when state_memClear =>
-                memAddress <= "00";
+                --memAddress <= "00";
 				writeFlag <= '1';
 				if (reset = '0') then
                     nextState <= state_readW;
+					memAddress <= "00";
+					writeFlag <= '0';
                 end if;
             when state_readW =>
-				writeFlag <= '0';
-				memAddress <= "00";
+				--writeFlag <= '0';
+				--memAddress <= "00";
 				if (syncedMS = '1') then
 					nextState <= state_writeS;
+					memAddress <= "01";
+					writeFlag <= '1';
 				elsif (syncedMR = '1') then
 					nextState <= state_readS;
+					writeFlag <= '0';
+					memAddress <= "01"
 				elsif (execute = '1') then
 					nextState <= state_mathOP;
 				end if;
 			when state_readS =>
-				writeFlag <= '0';
-				memAddress <= "01";
+				--writeFlag <= '0';
+				--memAddress <= "01";
 				if (execute = '1') then
 					nextState <= state_mathOP;
 				end if;
 			when state_writeS =>
-				memAddress <= "01";
-				writeFlag <= '1';
+				--memAddress <= "01";
+				--writeFlag <= '1';
 				nextState <= state_readW;
 			when state_mathOP =>
 				nextState <= state_writeW;
-			when state_writeW =>
 				memAddress <= "00";
 				writeFlag <= '1';
+			when state_writeW =>
+				--memAddress <= "00";
+				--writeFlag <= '1';
 				nextState <= state_readW;
+				writeFlag <= '0';
+				memAddress <= "00";
         end case;
     end process;
 end architecture beh;

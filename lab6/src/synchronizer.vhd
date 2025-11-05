@@ -21,8 +21,8 @@ architecture arch of synchronizer is
         process (clk, reset)
         begin
             if (reset = '1') then
-            temp_hold <= "00000000";
-            output <= "00000000";
+            temp_hold <= (others => '0');
+            output <= (others => '0');
             elsif (clk'event and clk = '1') then
                 temp_hold <= input;
                 output <= temp_hold;
