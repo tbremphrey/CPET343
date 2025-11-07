@@ -8,4 +8,4 @@ vcom -93 -work work ../../src/double_dabble.vhd
 vcom -93 -work work ../src/calc_state_machine_tb.vhd
 vsim -voptargs=+acc calc_state_machine_tb
 do wave.do
-run 2950 ns
+run 1600 ns

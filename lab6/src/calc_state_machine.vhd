@@ -7,8 +7,8 @@ entity calc_state_machine is
         reset           : in std_logic;
         clk             : in std_logic;
         execute         : in std_logic;
-		mSave           : in std_logic;
-		mRecall         : in std_logic;
+        mSave           : in std_logic;
+        mRecall         : in std_logic;
         inputOperator   : in std_logic_vector(1 downto 0);
         inputBits       : in std_logic_vector(7 downto 0);
         onesSSD         : out std_logic_vector(6 downto 0);
@@ -61,14 +61,14 @@ component double_dabble is
     );
 end component double_dabble;
 component alu is
-	port (
-		clk           : in  std_logic;
-		reset         : in  std_logic;
-		a             : in  std_logic_vector(7 downto 0); 
-		b             : in  std_logic_vector(7 downto 0);
-		op            : in  std_logic_vector(1 downto 0); -- 00: add, 01: sub, 10: mult, 11: div
-		result        : out std_logic_vector(7 downto 0)
-	);  
+    port (
+        clk           : in  std_logic;
+        reset         : in  std_logic;
+        a             : in  std_logic_vector(7 downto 0); 
+        b             : in  std_logic_vector(7 downto 0);
+        op            : in  std_logic_vector(1 downto 0); -- 00: add, 01: sub, 10: mult, 11: div
+        result        : out std_logic_vector(7 downto 0)
+    );  
 end component alu;
 
 signal onesDigit        : std_logic_vector(3 downto 0);
@@ -84,8 +84,9 @@ signal syncedMS         : std_logic;
 signal syncedMR         : std_logic;
 signal memIn         : std_logic_vector(7 downto 0);
 signal memOut         : std_logic_vector(7 downto 0);
-signal memAddress		: std_logic_vector(1 downto 0);
-signal writeFlag		: std_logic;
+signal memAddress       : std_logic_vector(1 downto 0);
+signal writeFlag        : std_logic;
+signal readFlag        : std_logic;
 
 
 begin
@@ -98,9 +99,9 @@ begin
         );
     operatorSync:synchronizer
         generic map (
-			bits => 2
-		)
-		port map (
+            bits => 2
+        )
+        port map (
             input => inputOperator,
             clk => clk,
             reset => reset,
@@ -165,14 +166,16 @@ begin
     memIn <= clockedOutput;
     paddedOutput <= ("0000" & clockedOutput);
 
-    process (clk, writeFlag)
+    process (clk, readFlag, writeFlag)
     begin
-        if (clk'event and clk = '1') then
+        --if (clk'event and clk = '1') then
             if (writeFlag = '1') then
-                calcMemory(to_integer(unsigned(memAddress))) <= memIn;
+                    calcMemory(to_integer(unsigned(memAddress))) <= memIn;
             end if;
-            memOut <= calcMemory(to_integer(unsigned(memAddress)));
-        end if;
+            if (readFlag = '1') then
+                    memOut <= calcMemory(to_integer(unsigned(memAddress)));
+            end if;
+        --end if;
     end process;
 
     process (clk, reset)
@@ -189,21 +192,21 @@ begin
         if (clk'event and clk = '1') then
         case currentState is
             when state_memClear =>
-				memAddress <= "00";
-				clockedOutput <= "00000000";
-			when state_readW =>
-				--memAddress <= "00";
+                --memAddress <= "00";
+                clockedOutput <= "00000000";
+            when state_readW =>
+                --memAddress <= "00";
                 clockedOutput <= memOut;
             when state_writeS =>
                 --memAddress <= "01";
-				clockedOutput <= memOut;
+                clockedOutput <= memOut;
             when state_mathOP =>
                 clockedOutput <= aluOut;
-			--when state_writeW =>
-				--memAddress <= "00";
-			when state_readS =>
-				--memAddress <= "01";
-				clockedOutput <= memOut;
+            --when state_writeW =>
+                --memAddress <= "00";
+            when state_readS =>
+                --memAddress <= "01";
+                clockedOutput <= memOut;
             when others =>
                 null;
         end case;
@@ -218,36 +221,41 @@ begin
         case currentState is
             when state_memClear =>
                 memAddress <= "00";
-				writeFlag <= '1';
-				if (reset = '0') then
+                readFlag <= '1';
+                writeFlag <= '1';
+                if (reset = '0') then
                     nextState <= state_readW;
                 end if;
             when state_readW =>
-				writeFlag <= '0';
-				memAddress <= "00";
-				if (syncedMS = '1') then
-					nextState <= state_writeS;
-				elsif (syncedMR = '1') then
-					nextState <= state_readS;
-				elsif (execute = '1') then
-					nextState <= state_mathOP;
-				end if;
-			when state_readS =>
-				writeFlag <= '0';
-				memAddress <= "01";
-				if (execute = '1') then
-					nextState <= state_mathOP;
-				end if;
-			when state_writeS =>
-				memAddress <= "01";
-				writeFlag <= '1';
-				nextState <= state_readW;
-			when state_mathOP =>
-				nextState <= state_writeW;
-			when state_writeW =>
-				memAddress <= "00";
-				writeFlag <= '1';
-				nextState <= state_readW;
+                writeFlag <= '0';
+                readFlag <= '1';
+                memAddress <= "00";
+                if (syncedMS = '1') then
+                    nextState <= state_writeS;
+                elsif (syncedMR = '1') then
+                    nextState <= state_readS;
+                elsif (execute = '1') then
+                    nextState <= state_mathOP;
+                end if;
+            when state_readS =>
+                writeFlag <= '0';
+                readFlag <= '1';
+                memAddress <= "01";
+                if (execute = '1') then
+                    nextState <= state_mathOP;
+                end if;
+            when state_writeS =>
+                memAddress <= "01";
+                writeFlag <= '1';
+                nextState <= state_readW;
+            when state_mathOP =>
+                readFlag <= '0';
+                nextState <= state_writeW;
+            when state_writeW =>
+                memAddress <= "00";
+                writeFlag <= '1';
+                readFlag <= '0';
+                nextState <= state_readW;
         end case;
     end process;
 end architecture beh;
