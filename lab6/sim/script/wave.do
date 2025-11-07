@@ -23,6 +23,7 @@ add wave -noupdate /calc_state_machine_tb/uut/inputOperator
 add wave -noupdate -radix States /calc_state_machine_tb/uut/onesSSD
 add wave -noupdate -radix States /calc_state_machine_tb/uut/tensSSD
 add wave -noupdate -radix States /calc_state_machine_tb/uut/hundredsSSD
+add wave -noupdate /calc_state_machine_tb/uut/clockedOutput
 add wave -noupdate /calc_state_machine_tb/uut/memOut
 add wave -noupdate /calc_state_machine_tb/uut/memAddress
 add wave -noupdate /calc_state_machine_tb/uut/nextState
