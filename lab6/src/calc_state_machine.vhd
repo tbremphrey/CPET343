@@ -13,6 +13,7 @@ entity calc_state_machine is
         inputBits       : in std_logic_vector(7 downto 0);
         onesSSD         : out std_logic_vector(6 downto 0);
         tensSSD         : out std_logic_vector(6 downto 0);
+		stateLED		: out std_logic_vector(3 downto 0);
         hundredsSSD     : out std_logic_vector(6 downto 0)
     );
 end entity calc_state_machine;
@@ -82,11 +83,15 @@ signal syncedOperator   : std_logic_vector(1 downto 0);
 signal syncedExecute    : std_logic;
 signal syncedMS         : std_logic;
 signal syncedMR         : std_logic;
-signal memIn         : std_logic_vector(7 downto 0);
-signal memOut         : std_logic_vector(7 downto 0);
+signal memIn            : std_logic_vector(7 downto 0);
+signal memOut           : std_logic_vector(7 downto 0);
 signal memAddress       : std_logic_vector(1 downto 0);
 signal writeFlag        : std_logic;
-signal readFlag        : std_logic;
+signal readFlag         : std_logic;
+signal invertedExecute  : std_logic;
+signal invertedMS       : std_logic;
+signal invertedMR       : std_logic;
+signal invertedReset    : std_logic;
 
 
 begin
@@ -94,7 +99,7 @@ begin
         port map (
             input => inputBits,
             clk => clk,
-            reset => reset,
+            reset => invertedReset,
             output => syncedInput
         );
     operatorSync:synchronizer
@@ -104,28 +109,28 @@ begin
         port map (
             input => inputOperator,
             clk => clk,
-            reset => reset,
+            reset => invertedReset,
             output => syncedOperator
         );
     flint:rising_edge_synchronizer
         port map (
             clk => clk,
-            reset => reset,
-            input => execute,
+            reset => invertedReset,
+            input => invertedExecute,
             edge => syncedExecute
         );
     msSync:rising_edge_synchronizer
         port map (
             clk => clk,
-            reset => reset,
-            input => mSave,
+            reset => invertedReset,
+            input => invertedMS,
             edge => syncedMS
         );
     mrSync:rising_edge_synchronizer
         port map (
             clk => clk,
-            reset => reset,
-            input => mRecall,
+            reset => invertedReset,
+            input => invertedMR,
             edge => syncedMR
         );
     outputSplitter:double_dabble
@@ -137,32 +142,37 @@ begin
         );
     onesOut:seven_seg
         port map (
-            reset => reset,
+            reset => invertedReset,
             bcd => onesDigit,
             seven_seg_out => onesSSD
         );
     tensOut:seven_seg
         port map (
-            reset => reset,
+            reset => invertedReset,
             bcd => tensDigit,
             seven_seg_out => tensSSD
         );
     hundOut:seven_seg
         port map (
-            reset => reset,
+            reset => invertedReset,
             bcd => hundredsDigit,
             seven_seg_out => hundredsSSD
         );
     mathOP:alu
         port map (
         clk => clk,
-        reset => reset,
+        reset => invertedReset,
         a => memOut,
         b => syncedInput,
         op => syncedOperator,
         result => aluOut
         ); 
-
+	
+	
+	invertedExecute <= not execute;
+	invertedMR <= not mRecall;
+	invertedMS <= not mSave;
+	invertedReset <= not reset;
     memIn <= clockedOutput;
     paddedOutput <= ("0000" & clockedOutput);
 
@@ -178,9 +188,9 @@ begin
         --end if;
     end process;
 
-    process (clk, reset)
+    process (clk, invertedReset)
     begin
-        if (reset = '1') then
+        if (invertedReset = '1') then
             currentState <= state_memClear;
         elsif (clk'event and clk = '1') then
             currentState <= nextState;
@@ -214,7 +224,7 @@ begin
     end process;
 
 
-    process (currentState, reset, syncedExecute, syncedMR, syncedMS)
+    process (currentState, invertedReset, syncedExecute, syncedMR, syncedMS)
     begin
         nextState <= currentState;
 
@@ -223,30 +233,34 @@ begin
                 memAddress <= "00";
                 readFlag <= '1';
                 writeFlag <= '1';
-                if (reset = '0') then
+				stateLED <= "1111";
+                if (invertedReset = '0') then
                     nextState <= state_readW;
                 end if;
             when state_readW =>
                 writeFlag <= '0';
                 readFlag <= '1';
                 memAddress <= "00";
+				stateLED <= "0001";
                 if (syncedMS = '1') then
                     nextState <= state_writeS;
                 elsif (syncedMR = '1') then
                     nextState <= state_readS;
-                elsif (execute = '1') then
+                elsif (syncedExecute = '1') then
                     nextState <= state_mathOP;
                 end if;
             when state_readS =>
                 writeFlag <= '0';
                 readFlag <= '1';
                 memAddress <= "01";
-                if (execute = '1') then
+				stateLED <= "0010";
+                if (syncedExecute = '1') then
                     nextState <= state_mathOP;
                 end if;
             when state_writeS =>
                 memAddress <= "01";
                 writeFlag <= '1';
+				stateLED <= "0100";
                 nextState <= state_readW;
             when state_mathOP =>
                 readFlag <= '0';
@@ -255,6 +269,7 @@ begin
                 memAddress <= "00";
                 writeFlag <= '1';
                 readFlag <= '0';
+				stateLED <= "1000";
                 nextState <= state_readW;
         end case;
     end process;
