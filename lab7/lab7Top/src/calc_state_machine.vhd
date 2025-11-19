@@ -1,0 +1,217 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity calc_state_machine is
+    port (
+        reset           : in std_logic;
+        clk             : in std_logic;
+        execute         : in std_logic;
+        mSave           : in std_logic;
+        mRecall         : in std_logic;
+        inputOperator   : in std_logic_vector(1 downto 0);
+        inputBits       : in std_logic_vector(7 downto 0);
+        onesSSD         : out std_logic_vector(6 downto 0);
+        tensSSD         : out std_logic_vector(6 downto 0);
+        hundredsSSD     : out std_logic_vector(6 downto 0);
+		stateLED		: out std_logic_vector(3 downto 0)
+    );
+end entity calc_state_machine;
+
+architecture beh of calc_state_machine is
+
+type CalcStates is (state_readW, state_readS, state_writeW, state_writeS, state_mathOP, state_memClear);
+signal currentState : CalcStates;
+signal nextState : CalcStates;
+
+type ram_type is array (3 downto 0) of std_logic_vector (7 downto 0);
+signal calcMemory : ram_type;
+
+component synchronizer is
+    generic (
+        bits    : integer := 8
+    );
+    port (
+        input   : in  std_logic_vector(bits-1 downto 0);
+        clk     : in std_logic;
+        reset   : in std_logic;
+        output  : out std_logic_vector(bits-1 downto 0)
+    );
+end component synchronizer;
+
+component seven_seg is
+  port (
+        reset           : in std_logic;
+        bcd             : in std_logic_vector(3 downto 0);
+        seven_seg_out   : out std_logic_vector(6 downto 0)
+  );  
+end component seven_seg;
+component double_dabble is
+    port (
+        result_padded           : in  std_logic_vector(11 downto 0); 
+        ones                    : out std_logic_vector(3 downto 0);
+        tens                    : out std_logic_vector(3 downto 0);
+        hundreds                : out std_logic_vector(3 downto 0)
+    );
+end component double_dabble;
+component alu is
+    port (
+        clk           : in  std_logic;
+        reset         : in  std_logic;
+        a             : in  std_logic_vector(7 downto 0); 
+        b             : in  std_logic_vector(7 downto 0);
+        op            : in  std_logic_vector(1 downto 0); -- 00: add, 01: sub, 10: mult, 11: div
+        result        : out std_logic_vector(7 downto 0)
+    );  
+end component alu;
+
+signal onesDigit        : std_logic_vector(3 downto 0);
+signal tensDigit        : std_logic_vector(3 downto 0);
+signal hundredsDigit    : std_logic_vector(3 downto 0);
+signal paddedOutput     : std_logic_vector(11 downto 0);
+signal aluOut  : std_logic_vector(7 downto 0);
+signal clockedOutput    : std_logic_vector(7 downto 0);
+signal memIn            : std_logic_vector(7 downto 0);
+signal memOut           : std_logic_vector(7 downto 0);
+signal memAddress       : std_logic_vector(1 downto 0);
+signal writeFlag        : std_logic;
+signal readFlag         : std_logic;
+
+
+begin
+    outputSplitter:double_dabble
+        port map (
+            result_padded => paddedOutput,
+            ones => onesDigit,
+            tens => tensDigit,
+            hundreds => hundredsDigit
+        );
+    onesOut:seven_seg
+        port map (
+            reset => reset,
+            bcd => onesDigit,
+            seven_seg_out => onesSSD
+        );
+    tensOut:seven_seg
+        port map (
+            reset => reset,
+            bcd => tensDigit,
+            seven_seg_out => tensSSD
+        );
+    hundOut:seven_seg
+        port map (
+            reset => reset,
+            bcd => hundredsDigit,
+            seven_seg_out => hundredsSSD
+        );
+    mathOP:alu
+        port map (
+        clk => clk,
+        reset => reset,
+        a => memOut,
+        b => inputBits,
+        op => inputOperator,
+        result => aluOut
+        ); 
+	
+    memIn <= clockedOutput;
+    paddedOutput <= ("0000" & clockedOutput);
+
+    process (clk, readFlag, writeFlag)
+    begin
+        --if (clk'event and clk = '1') then
+            if (writeFlag = '1') then
+                    calcMemory(to_integer(unsigned(memAddress))) <= memIn;
+            end if;
+            if (readFlag = '1') then
+                    memOut <= calcMemory(to_integer(unsigned(memAddress)));
+            end if;
+        --end if;
+    end process;
+
+    process (clk, reset)
+    begin
+        if (reset = '1') then
+            currentState <= state_memClear;
+        elsif (clk'event and clk = '1') then
+            currentState <= nextState;
+        end if;
+    end process;
+
+    process (clk, currentState)
+    begin
+        if (clk'event and clk = '1') then
+        case currentState is
+            when state_memClear =>
+                --memAddress <= "00";
+                clockedOutput <= "00000000";
+            when state_readW =>
+                --memAddress <= "00";
+                clockedOutput <= memOut;
+            when state_writeS =>
+                --memAddress <= "01";
+                clockedOutput <= memOut;
+            when state_mathOP =>
+                clockedOutput <= aluOut;
+            --when state_writeW =>
+                --memAddress <= "00";
+            when state_readS =>
+                --memAddress <= "01";
+                clockedOutput <= memOut;
+            when others =>
+                null;
+        end case;
+        end if;
+    end process;
+
+
+    process (currentState, reset, execute, mRecall, mSave)
+    begin
+        nextState <= currentState;
+
+        case currentState is
+            when state_memClear =>
+                memAddress <= "00";
+                readFlag <= '1';
+                writeFlag <= '1';
+				stateLED <= "1111";
+                if (reset = '0') then
+                    nextState <= state_readW;
+                end if;
+            when state_readW =>
+                writeFlag <= '0';
+                readFlag <= '1';
+                memAddress <= "00";
+				stateLED <= "0001";
+                if (mSave = '1') then
+                    nextState <= state_writeS;
+                elsif (mRecall = '1') then
+                    nextState <= state_readS;
+                elsif (execute = '1') then
+                    nextState <= state_mathOP;
+                end if;
+            when state_readS =>
+                writeFlag <= '0';
+                readFlag <= '1';
+                memAddress <= "01";
+				stateLED <= "0010";
+                if (execute = '1') then
+                    nextState <= state_mathOP;
+                end if;
+            when state_writeS =>
+                memAddress <= "01";
+                writeFlag <= '1';
+				stateLED <= "0100";
+                nextState <= state_readW;
+            when state_mathOP =>
+                readFlag <= '0';
+                nextState <= state_writeW;
+            when state_writeW =>
+                memAddress <= "00";
+                writeFlag <= '1';
+                readFlag <= '0';
+				stateLED <= "1000";
+                nextState <= state_readW;
+        end case;
+    end process;
+end architecture beh;
