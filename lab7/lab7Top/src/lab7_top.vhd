@@ -20,7 +20,14 @@ entity lab7_top is
 end entity lab7_top;
 
 architecture beh of lab7_top is
-    
+    component blink_rom
+		port(
+			address         : IN STD_LOGIC_VECTOR (4 DOWNTO 0);
+			clock           : IN STD_LOGIC  := '1';
+			q               : OUT STD_LOGIC_VECTOR (12 DOWNTO 0)
+		);
+	end component;
+	
     component calc_state_machine is
         port (
         reset           : in std_logic;
@@ -50,7 +57,7 @@ architecture beh of lab7_top is
     signal currentState : programCounterStates;
     signal nextState : programCounterStates;
     
-    --signal invertedNext   : std_logic;
+    signal execute   : std_logic;
     signal reset  : std_logic;
     
     signal syncedNext     : std_logic;
@@ -64,11 +71,12 @@ architecture beh of lab7_top is
     
     signal address_sig    : std_logic_vector(4 downto 0) := "00000";
     
-    signal programCounter : std_logic_vector(4 downto 0) := "00000";
+    signal programCounter : std_logic_vector(4 downto 0) := "00001";
     
     begin
-        reset <= resetButton; --change to not for hardware
-        
+        reset <= not resetButton; --change to not for hardware
+        execute <= not nextButton; --change to not for hardware
+		
         operatorBits <= instruction(12 downto 11);
         inputBits <= instruction(10 downto 3);
         
@@ -96,9 +104,12 @@ architecture beh of lab7_top is
             end if;
         end process;
         
-        process (clk, currentState)
+        process (clk, currentState, reset)
         begin
-            if (clk'event and clk = '1') then
+            if (reset = '1') then
+				address_sig <= "00000";
+				programCounter <= "00001";
+			elsif (clk'event and clk = '1' and reset = '0') then
             case currentState is
                 when state_wait =>
                     blipFlag <= '0';
@@ -142,7 +153,7 @@ architecture beh of lab7_top is
                 execute => exBit,
                 mSave => msBit,
                 mRecall => mrBit,
-                inputOperator => inputOperator,
+                inputOperator => operatorBits,
                 inputBits => inputBits,
                 onesSSD => SSD0,
                 tensSSD => SSD1,
@@ -153,7 +164,7 @@ architecture beh of lab7_top is
             port map (
                 clk => clk,
                 reset => reset,
-                input => nextButton, --change to not for hardware
+                input => execute,
                 edge => syncedNext
             );
         

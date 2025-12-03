@@ -1,0 +1,192 @@
+-- Dr. Kaputa
+-- Lab 8: DJ Roomba 3000 
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity dj_roomba_3000 is 
+  port(
+    clk                 : in std_logic;
+    reset               : in std_logic;
+    execute_btn         : in std_logic;
+    sync                : in std_logic;
+    led                 : out std_logic_vector(7 downto 0);
+    audio_out           : out std_logic_vector(15 downto 0);
+    fetchNext     : in std_logic
+  );
+end dj_roomba_3000;
+
+architecture beh of dj_roomba_3000 is
+  -- instruction memory
+  component rom_instructions
+    port(
+      address    : in std_logic_vector (4 DOWNTO 0);
+      clock      : in std_logic  := '1';
+      q          : out std_logic_vector (7 DOWNTO 0)
+    );
+  end component;
+  
+  -- data memory
+  component rom_data
+    port(
+      address  : in std_logic_vector (13 DOWNTO 0);
+      clock    : in std_logic  := '1';
+      q        : out std_logic_vector (15 DOWNTO 0)
+    );
+  end component;
+  
+  component rising_edge_synchronizer is 
+      port (
+      clk               : in std_logic;
+      reset             : in std_logic;
+      input             : in std_logic;
+      edge              : out std_logic
+    );
+    end component rising_edge_synchronizer;
+    
+  signal data_address  : std_logic_vector(13 downto 0);
+  signal instructionAddress : std_logic_vector(4 downto 0);
+  signal instructionsOUT    : std_logic_vector(7 downto 0);
+  signal syncedFetch        :std_logic;
+ 
+  signal programCounter : std_logic_vector(4 downto 0) := "00001";
+  type programCounterStates is (state_idle, state_fetch, state_decode, state_execute);
+  signal currentState : programCounterStates;
+  signal nextState : programCounterStates;
+  
+  signal controlledDatAdd : std_logic_vector(13 downto 0);
+
+
+begin
+
+-- data instantiation
+u_rom_data_inst : rom_data
+  port map (
+    address    => data_address,
+    clock      => clk,
+    q          => audio_out
+  );
+    
+  -- loop audio file
+--  process(clk,reset)
+--  begin 
+--    if (reset = '1') then 
+--      data_address <= (others => '0');
+--    elsif (clk'event and clk = '1') then
+--      if (sync = '1') then    
+--        data_address <= std_logic_vector(unsigned(data_address) + 1 );
+--      end if;
+--    end if;
+--  end process;
+  
+  instructions_In : rom_instructions
+    port map (
+      address   => instructionAddress,
+      clock     => clk,
+      q         => instructionsOUT
+    );
+    
+    nextSyncronizer : rising_edge_synchronizer
+    port map (
+        clk => clk,
+        reset => reset,
+        input => fetchNext,
+        edge => syncedFetch
+    );
+
+  led <= "10101010";
+  
+    --State Machine
+    instructionAddress <= programCounter;
+    process (clk, reset)
+	begin
+		if (reset = '1') then 
+            data_address <= (others => '0');
+        elsif (clk'event and clk = '1') then
+            if (sync = '1') then    
+                data_address <= controlledDatAdd;
+            end if;
+        end if;
+    end process;
+    
+    process (instructionsOUT)
+    begin
+        case instructionsOUT is
+            when "00000000" => --Play Once
+                if (controlledDatAdd /= "11111111111111") then
+                    controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+                end if;
+            when "00100000" => -- Play Repeating
+                controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+            when "11000000" => -- Stop
+                controlledDatAdd <= (others => '0');
+            when "01000000" => -- Pause
+                controlledDatAdd <= controlledDatAdd;
+            when "10010000" => -- Seek half way
+                controlledDatAdd <= "01111111111111";
+        end case;
+    end process;
+    
+    process (clk, reset)
+    begin
+        if (reset = '1') then
+            currentState <= state_idle;
+        elsif (clk'event and clk = '1') then
+            currentState <= nextState;
+        end if;
+    end process;
+    
+    process (clk, currentState, reset)
+    begin
+        if (reset = '1') then
+            instructionAddress <= "00000";
+            programCounter <= "00001";
+        elsif (clk'event and clk = '1' and reset = '0') then
+        case currentState is
+            when state_idle =>
+                
+            when state_read =>
+                programCounter <= std_logic_vector(unsigned(programCounter) + 1);
+            when state_decode =>
+                case instructionsOUT is
+                    when "00000000" => --Play Once
+                        if (controlledDatAdd != "11111111111111") then
+                            controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+                        end if;
+                    when "00100000" => -- Play Repeating
+                        controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+                    when "11000000" => -- Stop
+                        controlledDatAdd <= (others => '0');
+                    when "01000000" => -- Pause
+                        controlledDatAdd <= controlledDatAdd;
+                    when "10010000" => -- Seek half way
+                        controlledDatAdd <= "01111111111111";
+                end case;
+            when state_execute =>
+                if (sync = '1') then    
+                    data_address <= controlledDatAdd;
+                end if;
+            end case;
+        end if;
+    end process;
+
+    process (currentState, syncedFetch)
+    begin
+        nextState <= currentState;
+        case currentState is
+            when state_idle =>
+                if (syncedFetch = '1') then
+                    nextState <= state_fetch;
+                end if;
+            when state_fetch =>
+                nextState <= state_decode;
+            when state_decode =>
+                nextState <= state_execute;
+            when state_execute =>
+                if (syncedFetch = '1') then
+                    nextState <= state_fetch;
+                end if;
+        end case;
+    end process;
+end beh;
