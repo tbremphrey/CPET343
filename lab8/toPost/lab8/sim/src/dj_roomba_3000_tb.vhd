@@ -83,49 +83,49 @@ input_sim:process
 	report "********* Start TB *********";
 		
 	report "********* Test 1 *********";
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		--------------------------------
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		--------------------------------
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		--------------------------------
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		--------------------------------
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 		
-		wait for 20*period;
+		wait for 100*period;
 		exButton <= '1';
-		wait for 20*period;
+		wait for 10*period;
 		exButton <= '0';
 	report "********* End TB *********";
 	wait;

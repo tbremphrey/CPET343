@@ -16,9 +16,14 @@ add wave -noupdate /dj_roomba_3000_tb/dj_roomba/sync
 add wave -noupdate /dj_roomba_3000_tb/dj_roomba/led
 add wave -noupdate /dj_roomba_3000_tb/dj_roomba/programCounter
 add wave -noupdate /dj_roomba_3000_tb/dj_roomba/instructionAddress
+add wave -noupdate /dj_roomba_3000_tb/dj_roomba/instructionsOUT
 add wave -noupdate -max 8522.0 -radix decimal /dj_roomba_3000_tb/dj_roomba/audio_out
 add wave -noupdate /dj_roomba_3000_tb/dj_roomba/controlledDatAdd
 add wave -noupdate /dj_roomba_3000_tb/dj_roomba/data_address
+add wave -noupdate /dj_roomba_3000_tb/dj_roomba/nextState
+add wave -noupdate /dj_roomba_3000_tb/dj_roomba/currentState
+
+
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {592 ns} 0}
 quietly wave cursor active 1

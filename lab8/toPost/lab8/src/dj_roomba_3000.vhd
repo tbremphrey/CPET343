@@ -45,7 +45,7 @@ architecture beh of dj_roomba_3000 is
     end component rising_edge_synchronizer;
     
   signal data_address  : std_logic_vector(13 downto 0) := (others => '0');
-  signal instructionAddress : std_logic_vector(4 downto 0) := (others => '0');
+  signal instructionAddress : std_logic_vector(4 downto 0) := "00000";
   signal instructionsOUT    : std_logic_vector(7 downto 0);
   signal syncedFetch        :std_logic;
  
@@ -54,8 +54,8 @@ architecture beh of dj_roomba_3000 is
   signal currentState : programCounterStates;
   signal nextState : programCounterStates;
   
-  signal controlledDatAdd : std_logic_vector(13 downto 0);
-
+  signal controlledDatAdd : std_logic_vector(13 downto 0) := (others => '0');
+  signal decodeFlag : std_logic;
 
 begin
 
@@ -98,16 +98,7 @@ u_rom_data_inst : rom_data
   
     --State Machine
     instructionAddress <= programCounter;
-    process (clk, reset)
-	begin
-		if (reset = '1') then 
-            data_address <= (others => '0');
-        elsif (clk'event and clk = '1') then
-            if (sync = '1') then    
-                data_address <= controlledDatAdd;
-            end if;
-        end if;
-    end process;
+   
     
     process (clk, reset)
     begin
@@ -118,35 +109,48 @@ u_rom_data_inst : rom_data
         end if;
     end process;
     
+	process (decodeFlag, sync, clk)
+	begin
+		if (decodeFlag = '0') then
+			controlledDatAdd <= controlledDatAdd;
+		elsif ((decodeFlag = '1') and (sync = '1') and (clk'event and clk = '1')) then
+	        case instructionsOUT is
+                when "00000000" => --Play Once
+                    if (controlledDatAdd /= "11111111111111") then
+                        controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+                    end if;
+                when "00100000" => -- Play Repeating
+                    controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
+                when "11000000" => -- Stop
+                    controlledDatAdd <= (others => '0');
+                when "01000000" => -- Pause
+                    controlledDatAdd <= controlledDatAdd;
+                when "10010000" => -- Seek half way
+                    controlledDatAdd <= "01111111111111";
+            	when others =>
+				    controlledDatAdd <= controlledDatAdd;
+            end case;
+		end if;
+	end process;
+	
+	
     process (clk, currentState, reset)
     begin
         if (reset = '1') then
-            instructionAddress <= "00000";
-            programCounter <= "00001";
+            --instructionAddress <= "00000";
+            programCounter <= "00000";
         elsif (clk'event and clk = '1' and reset = '0') then
         case currentState is
             when state_idle =>
-                controlledDatAdd <= (others => '0');
+                decodeFlag <= '0';
             when state_fetch =>
-                programCounter <= std_logic_vector(unsigned(programCounter) + 1);
+                decodeFlag <= '0';
+				programCounter <= std_logic_vector(unsigned(programCounter) + 1);
             when state_decode =>
-                case instructionsOUT is
-                    when "00000000" => --Play Once
-                        if (controlledDatAdd /= "11111111111111") then
-                            controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
-                        end if;
-                    when "00100000" => -- Play Repeating
-                        controlledDatAdd <= std_logic_vector(unsigned(controlledDatAdd) + 1 );
-                    when "11000000" => -- Stop
-                        controlledDatAdd <= (others => '0');
-                    when "01000000" => -- Pause
-                        controlledDatAdd <= controlledDatAdd;
-                    when "10010000" => -- Seek half way
-                        controlledDatAdd <= "01111111111111";
-					when others =>
-					    controlledDatAdd <= controlledDatAdd;
-                end case;
+                decodeFlag <= '1';
             when state_execute =>
+				--decodeFlag <= '1';
+				
                 if (sync = '1') then    
                     data_address <= controlledDatAdd;
                 end if;
